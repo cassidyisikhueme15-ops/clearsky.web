@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#25272a"><link rel="stylesheet" href="/style.css"><title>Admin Dashboard · ClearSky 5.0</title></head>
+<body>
+<main class="page">
+<header class="top"><a class="brand" href="/home.html"><span class="brand-mark">CS</span><span data-brand>ClearSky</span><span class="brand-version">5.0</span></a><span class="muted">Owner dashboard</span></header>
+<section class="hero"><span class="pill">OWNER ADMIN</span><h1>ClearSky control center.</h1><p class="muted">Manage the ClearSky experience, users, applications, tools and editable frontend settings from one dashboard.</p></section>
+<div id="stats" class="grid"></div>
+<div class="card"><h2>Frontend editor</h2><p class="muted">These settings control the public ClearSky dashboard and shared branding.</p><form id="settingsForm">
+<label>Brand name<input id="brandName"></label><label>Home title<input id="homeTitle"></label><label>Home description<textarea id="homeDescription"></textarea></label><label>Home button<input id="homeButton"></label><label>Announcement<textarea id="announcement"></textarea></label><label>FAQ / support<textarea id="faqText"></textarea></label><label>Primary color<input id="primaryColor"></label><label>Secondary color<input id="secondaryColor"></label><label>Tool order<input id="toolOrder"></label><button>Save frontend</button></form><p id="settingsMessage" class="muted"></p></div>
+<div class="row"><a class="primary" href="/admin-subadmins.html">Manage sub-admins</a><a class="primary" href="/tools.html">Open all tools</a></div>
+<div class="card"><h2>Sub-admin applications</h2><div id="applications"></div></div>
+<div class="card"><h2>Premium applications</h2><div id="premium"></div></div>
+<div class="card"><h2>Users</h2><div id="users"></div></div>
+</main>
+<div id="navbar-container"></div>
+<script src="/app.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", async function(){
+ const me=await api("/api/me"); if(me.user?.role!=="admin"){document.querySelector("main").innerHTML='<div class="card"><h1>Admin access required</h1><p class="muted">This dashboard is only available to the owner admin.</p><a class="primary" href="/home.html">Return home</a></div>';return;}
+ const stats=await api("/api/admin/stats"); const box=document.getElementById("stats");
+ [[stats.users,"Users"],[stats.paid,"Paid users"],[stats.generations,"Generations"],[stats.subadminApplications,"Sub-admin applications"]].forEach(function(item){const c=document.createElement("div");c.className="card";c.innerHTML="<b style='font-size:28px'>"+esc(item[0])+"</b><p class='muted'>"+esc(item[1])+"</p>";box.appendChild(c);});
+ const set=await api("/api/admin/settings"); Object.entries(set.settings||{}).forEach(function([k,v]){const el=document.getElementById(k);if(el)el.value=v;});
+ document.getElementById("settingsForm").onsubmit=async function(e){e.preventDefault();const b={};["brandName","homeTitle","homeDescription","homeButton","announcement","faqText","primaryColor","secondaryColor","toolOrder"].forEach(id=>b[id]=document.getElementById(id).value);const r=await api("/api/admin/settings","POST",b);document.getElementById("settingsMessage").textContent=r.ok?"Saved.":(r.error||"Could not save.");};
+ const a=await api("/api/admin/subadmin-applications"); document.getElementById("applications").innerHTML=(a.applications||[]).map(v=>'<div class="list"><span>'+esc(v.email)+' · '+esc(v.status)+'</span>'+(v.status==='paid'?'<button onclick="grantSub(\''+esc(v.email)+'\')">Grant</button>':'')+'</div>').join("")||'<p class="muted">None</p>';
+ const p=await api("/api/admin/premium"); document.getElementById("premium").innerHTML=(p.applications||[]).map(v=>'<div class="list">'+esc(v.email)+' · <b>'+esc(v.status)+'</b></div>').join("")||'<p class="muted">None</p>';
+ const u=await api("/api/admin/users"); document.getElementById("users").innerHTML=(u.users||[]).slice(0,100).map(v=>'<div class="list"><span>'+esc(v.nickname)+' · '+esc(v.email)+'</span><span>'+esc(v.role)+' · '+esc(v.plan)+'</span></div>').join("")||'<p class="muted">None</p>';
+});
+async function grantSub(email){const r=await api("/api/admin/subadmins/grant","POST",{email});alert(r.ok?"Sub-admin granted.":(r.error||"Could not grant."));location.reload();}
+</script><script src="/js/navbar.js"></script>
+</body></html>

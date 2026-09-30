@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#25272a">
+<link rel="stylesheet" href="/style.css">
+<title>APA · ClearSky 5.0</title>
+<style>
+.apa-shell{display:grid;grid-template-columns:1fr;gap:14px}
+.apa-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.apa-orb{width:72px;height:72px;border-radius:24px;background:linear-gradient(145deg,#303238,#17181a);color:#f1cf70;display:grid;place-items:center;font-weight:950;letter-spacing:-.08em;box-shadow:0 14px 34px rgba(37,39,42,.2)}
+.apa-status{font-size:12px;color:var(--muted)}
+.apa-chat{height:min(54vh,560px);min-height:320px;overflow:auto;border:1px solid var(--line);border-radius:18px;background:#fffdf8;padding:14px;display:flex;flex-direction:column;gap:10px}
+.apa-msg{display:flex}.apa-msg.me{justify-content:flex-end}.apa-bubble{max-width:min(760px,88%);padding:12px 14px;border-radius:16px;line-height:1.5;white-space:pre-wrap}.apa-msg.me .apa-bubble{background:var(--charcoal);color:#fff;border-bottom-right-radius:5px}.apa-msg.ai .apa-bubble{background:#f3efe5;border:1px solid var(--line);border-bottom-left-radius:5px}
+.apa-compose{display:grid;grid-template-columns:1fr auto;gap:8px}.apa-compose input{min-width:0}.apa-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.apa-actions button{min-height:44px}.camera-modal{display:none;position:fixed;inset:0;z-index:2000;background:rgba(15,16,17,.72);padding:14px;align-items:center;justify-content:center}.camera-modal.open{display:flex}.camera-card{width:min(720px,100%);background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:14px}.camera-card video{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:#111}.camera-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.camera-help{font-size:12px;color:var(--muted);margin-top:8px}
+@media(max-width:560px){.apa-compose{grid-template-columns:1fr}.apa-chat{height:52vh}.apa-bubble{max-width:94%}}
+</style>
+</head>
+<body>
+<main class="page">
+<header class="top"><a class="brand" href="/home.html"><span class="brand-mark">CS</span><span data-brand>ClearSky</span><span class="brand-version">5.0</span></a><span class="muted">APA</span></header>
+<section class="card apa-shell">
+<div class="apa-head"><div><div class="apa-orb">CS</div></div><div style="flex:1;min-width:220px"><span class="pill">APA</span><h1 style="margin:.35rem 0">Your ClearSky AI assistant</h1><p class="muted">Talk to APA, hear replies, or show it something with your camera.</p><div class="apa-status" id="apaStatus">Checking AI…</div></div></div>
+<div id="chat" class="apa-chat" aria-live="polite"></div>
+<form id="apaForm" autocomplete="off">
+<div class="apa-compose"><input id="apaQuestion" placeholder="Type a message to APA…" aria-label="Message APA" required><button id="apaButton" class="primary" type="submit">Send</button></div>
+<div class="apa-actions"><button id="voiceButton" class="secondary" type="button">🎙 Talk</button><button id="stopVoice" class="secondary" type="button">🔇 Stop speaking</button><button id="cameraButton" class="secondary" type="button">📷 Camera</button></div>
+</form>
+</section>
+</main>
+<div id="navbar-container"></div>
+<div id="cameraModal" class="camera-modal" aria-hidden="true"><div class="camera-card"><video id="cameraVideo" autoplay playsinline></video><div class="camera-actions"><button id="captureButton" class="primary" type="button">Capture & ask APA</button><button id="closeCamera" class="secondary" type="button">Close</button></div><div class="camera-help">The camera is used only when you open it and capture a frame. The frame is sent to ClearSky for analysis and is not saved by this page.</div></div></div>
+<script src="/app.js"></script>
+<script>
+(function(){
+ const chat=document.getElementById('chat'), form=document.getElementById('apaForm'), input=document.getElementById('apaQuestion'), send=document.getElementById('apaButton'), status=document.getElementById('apaStatus');
+ const voice=document.getElementById('voiceButton'), stop=document.getElementById('stopVoice'), camera=document.getElementById('cameraButton'), modal=document.getElementById('cameraModal'), video=document.getElementById('cameraVideo'), capture=document.getElementById('captureButton'), close=document.getElementById('closeCamera');
+ const history=[]; let recognition=null, stream=null, busy=false;
+ function bubble(role,text){const row=document.createElement('div');row.className='apa-msg '+(role==='user'?'me':'ai');const b=document.createElement('div');b.className='apa-bubble';b.textContent=text;row.appendChild(b);chat.appendChild(row);chat.scrollTop=chat.scrollHeight;return b}
+ function speak(text){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(text).slice(0,1800));u.rate=.98;u.pitch=1;speechSynthesis.speak(u)}
+ function loginCheck(){if(!isLoggedIn()){showLoginRequired(chat,'Sign in or log in before using APA.');return false}return true}
+ bubble('assistant','Hello. I\'m APA. You can type to me, talk to me, or use the camera to show me something.');
+ async function health(){try{const r=await api('/api/health');status.textContent=r.ok?'AI service online':'AI service unavailable'}catch{status.textContent='Server unavailable'}} health();
+ form.addEventListener('submit',async e=>{e.preventDefault();if(!loginCheck()||busy)return;const text=input.value.trim();if(!text)return;input.value='';bubble('user',text);history.push({role:'user',content:text});busy=true;send.disabled=true;const pending=bubble('assistant','Thinking…');try{const r=await api('/api/ai/aipa','POST',{prompt:text,history:history.slice(-12)});if(r.loginRequired){showLoginRequired(chat,'Your session expired. Please log in again.');return}const answer=r.result||r.error||'APA could not respond.';pending.textContent=answer;history.push({role:'assistant',content:answer});speak(answer)}catch(err){pending.textContent='APA could not respond right now.'}finally{busy=false;send.disabled=false}});
+ voice.addEventListener('click',()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){bubble('assistant','Voice input is not supported by this browser. Try a recent Chrome or Edge browser.');return}if(recognition){recognition.stop();recognition=null;voice.textContent='🎙 Talk';return}recognition=new SR();recognition.lang=navigator.language||'en-US';recognition.interimResults=true;recognition.continuous=false;voice.textContent='🔴 Listening…';recognition.onresult=e=>{let text='';for(const r of e.results)text+=r[0].transcript;input.value=text;if(e.results[e.results.length-1].isFinal){recognition.stop();form.requestSubmit()}};recognition.onerror=()=>bubble('assistant','Voice input stopped. Check your microphone permission.');recognition.onend=()=>{recognition=null;voice.textContent='🎙 Talk'};recognition.start()});
+ stop.addEventListener('click',()=>{if('speechSynthesis' in window)speechSynthesis.cancel()});
+ async function openCamera(){if(!loginCheck())return;if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){bubble('assistant','This browser does not provide camera access here.');return}try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=stream;modal.classList.add('open');modal.setAttribute('aria-hidden','false')}catch{bubble('assistant','Camera access was not granted. Allow camera permission for ClearSky in your browser settings.')}}
+ function closeCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
+ camera.addEventListener('click',openCamera);close.addEventListener('click',closeCamera);
+ capture.addEventListener('click',async()=>{if(!stream||busy)return;const c=document.createElement('canvas');const w=video.videoWidth||640,h=video.videoHeight||480,scale=Math.min(1,1280/w);c.width=Math.round(w*scale);c.height=Math.round(h*scale);c.getContext('2d').drawImage(video,0,0,c.width,c.height);const image=c.toDataURL('image/jpeg',.8);const question=prompt('What should APA look for in the image?','Describe what is visible in this image.');if(question===null)return;closeCamera();bubble('user','[Camera] '+question);busy=true;const pending=bubble('assistant','Looking at the image…');try{const r=await api('/api/ai/vision','POST',{image,prompt:question});pending.textContent=r.result||r.error||'APA could not analyze the image.';if(r.result)speak(r.result)}catch{pending.textContent='APA could not analyze the image right now.'}finally{busy=false}});
+ window.addEventListener('beforeunload',()=>{if(stream)stream.getTracks().forEach(t=>t.stop());if('speechSynthesis' in window)speechSynthesis.cancel()});
+})();
+</script>
+<script src="/js/navbar.js"></script>
+<script>
+(function(){const fab=document.querySelector('.fab');if(!fab)return;let dragging=false,moved=false,startX=0,startY=0,startL=0,startT=0;fab.style.touchAction='none';fab.addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;const r=fab.getBoundingClientRect();dragging=true;moved=false;startX=e.clientX;startY=e.clientY;startL=r.left;startT=r.top;fab.setPointerCapture?.(e.pointerId)});fab.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-startX,dy=e.clientY-startY;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;const w=fab.offsetWidth,h=fab.offsetHeight;const left=Math.max(6,Math.min(window.innerWidth-w-6,startL+dx));const top=Math.max(6,Math.min(window.innerHeight-h-6,startT+dy));fab.style.left=left+'px';fab.style.top=top+'px';fab.style.right='auto';fab.style.bottom='auto'});fab.addEventListener('pointerup',e=>{dragging=false;fab.releasePointerCapture?.(e.pointerId)});fab.addEventListener('click',e=>{if(moved){e.preventDefault();e.stopPropagation();moved=false}},{capture:true})})();
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#25272a">
+    <link rel="stylesheet" href="/style.css">
+    <title>Profile · ClearSky 5.0</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/home.html">
+                <span class="brand-mark">CS</span>
+                <span data-brand>ClearSky</span>
+                <span class="brand-version">5.0</span>
+            </a>
+            <span class="muted">Profile</span>
+        </header>
+
+        <div id="profileContent"></div>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const content = document.getElementById("profileContent");
+
+            if (!localStorage.cs_token) {
+                showLoginRequired(content, "Your profile is private. Sign in or log in to view your account, membership and payment information.");
+                return;
+            }
+
+            const result = await api("/api/me");
+
+            if (!result.user) {
+                localStorage.removeItem("cs_token");
+                showLoginRequired(content, "Your session has ended. Sign in or log in to open your profile.");
+                return;
+            }
+
+            const user = result.user;
+            content.innerHTML = "";
+
+            const head = document.createElement("div");
+            head.className = "card profile-head";
+            head.innerHTML = "<div class=\"big-logo\">" + esc((user.nickname || user.email || "U")[0].toUpperCase()) + "</div>" +
+                "<h1>" + esc(user.nickname || "User") + "</h1>" +
+                "<p class=\"muted\">" + esc(user.email) + "</p>" +
+                "<p>Plan: <b>" + esc(user.plan || "Free") + "</b></p>";
+            content.appendChild(head);
+
+            const nicknameCard = document.createElement("div");
+            nicknameCard.className = "card";
+            nicknameCard.innerHTML = "<h2>Nickname</h2><input id=\"nicknameInput\" maxlength=\"24\"><button id=\"saveNickname\">Save nickname</button><p id=\"nicknameMessage\" class=\"muted\"></p>";
+            nicknameCard.querySelector("#nicknameInput").value = user.nickname || "";
+            content.appendChild(nicknameCard);
+
+            function setting(title, value, href) {
+                const link = document.createElement("a");
+                link.className = "setting card";
+                link.href = href;
+                link.innerHTML = "<b>" + esc(title) + "</b><span>" + esc(value) + " ›</span>";
+                content.appendChild(link);
+            }
+
+            setting("Payment method", user.payment_method || "None", "/payment-method.html");
+            setting("Subscription", user.plan || "Free", "/subscription.html");
+
+            if (user.role === "user") setting("Upgrade membership", "Plans", "/membership.html");
+
+            const accountCard = document.createElement("div");
+            accountCard.className = "card";
+            accountCard.innerHTML = "<button id=\"logoutButton\" class=\"secondary\">Log out</button><button id=\"deleteButton\" class=\"danger\">Sign out and delete account</button><p class=\"muted\">Log out keeps your account. Account deletion permanently removes the account data available through ClearSky.</p>";
+            content.appendChild(accountCard);
+
+            nicknameCard.querySelector("#saveNickname").onclick = async function () {
+                const nickname = nicknameCard.querySelector("#nicknameInput").value.trim();
+                const response = await api("/api/profile/nickname", "POST", { nickname: nickname });
+                nicknameCard.querySelector("#nicknameMessage").textContent = response.ok ? "Nickname saved." : (response.error || "Could not save nickname.");
+            };
+
+            accountCard.querySelector("#logoutButton").onclick = async function () {
+                await api("/api/logout", "POST", {});
+                localStorage.clear();
+                location = "/home.html";
+            };
+
+            accountCard.querySelector("#deleteButton").onclick = async function () {
+                if (!confirm("Delete this account permanently?")) return;
+                const response = await api("/api/delete-account", "POST", {});
+                if (response.ok) {
+                    localStorage.clear();
+                    location = "/home.html";
+                } else {
+                    alert(response.error || "Could not delete account.");
+                }
+            };
+        });
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

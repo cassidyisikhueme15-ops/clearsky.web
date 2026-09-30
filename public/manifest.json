@@ -1,0 +1,10 @@
+{
+  "name":"ClearSky 5.0",
+  "short_name":"ClearSky",
+  "start_url":"/home.html",
+  "display":"standalone",
+  "background_color":"#f4f1e8",
+  "theme_color":"#25272a",
+  "description":"ClearSky AI workspace with APA voice and camera assistance",
+  "icons":[]
+}

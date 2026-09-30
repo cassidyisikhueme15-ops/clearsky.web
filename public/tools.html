@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#25272a">
+    <link rel="stylesheet" href="/style.css">
+    <title>Tools · ClearSky 5.0</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/home.html">
+                <span class="brand-mark">CS</span>
+                <span data-brand>ClearSky</span>
+                <span class="brand-version">5.0</span>
+            </a>
+            <span class="muted">Tools</span>
+        </header>
+
+        <section class="hero">
+            <span class="pill">CLEARSKY STUDIO</span>
+            <h1>Creative tools.</h1>
+            <p class="muted">Explore everything in ClearSky. You can browse the tools without signing in. Sign in or log in when you want to generate.</p>
+        </section>
+
+        <div id="grid" class="grid"></div>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const icons = { website: "▣", logo: "✦", flyer: "▤", app: "▦", game: "◇", photo: "◉", beats: "♫", "ai-maker": "✺" };
+            const desc = {
+                website: "Create a complete website.",
+                logo: "Create an AI logo concept.",
+                flyer: "Create a polished flyer.",
+                app: "Build app concepts with a membership.",
+                game: "Build game concepts with a membership.",
+                photo: "Edit photo projects with a membership.",
+                beats: "Generate an original beat pattern and audio with a membership.",
+                "ai-maker": "Create AI-powered ideas, workflows and digital concepts with a membership."
+            };
+
+            const response = await api("/api/config");
+            const free = new Set(response.freeTools || []);
+            const tools = response.tools || [];
+            const grid = document.getElementById("grid");
+
+            grid.innerHTML = "";
+
+            tools.forEach(function (tool) {
+                const link = document.createElement("a");
+                link.className = "tool";
+                link.href = tool.id === "beats" ? "/beats.html" : "/tool.html?t=" + encodeURIComponent(tool.id);
+                link.innerHTML = "<span class=\"icon\">" + (icons[tool.id] || "•") + "</span><b>" + esc(tool.name) + "</b><span>" + esc(desc[tool.id] || "Create with AI.") + "</span><small class=\"tool-badge\">" + (free.has(tool.id) ? "FREE TOOL" : "MEMBERSHIP") + "</small>";
+                grid.appendChild(link);
+            });
+        });
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

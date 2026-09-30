@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="/style.css">
+    <title>Sub-admin permissions · ClearSky 5.0</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/admin.html"><span class="brand-mark">CS</span> ClearSky <span class="brand-version">5.0</span></a>
+            <span>Sub-admin permissions</span>
+        </header>
+        <div id="content"></div>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        const permissions = [
+            ["edit_home", "Edit homepage"],
+            ["edit_tools", "Edit tool order"],
+            ["edit_announcements", "Edit announcements"],
+            ["edit_faq", "Edit FAQ/support"],
+            ["view_users", "View users"],
+            ["review_premium", "Review Premium applications"]
+        ];
+
+        async function loadSubAdmins() {
+            const response = await api("/api/admin/subadmins");
+            const content = document.getElementById("content");
+            content.innerHTML = "";
+
+            if (response.error) {
+                const error = document.createElement("div");
+                error.className = "card";
+                error.textContent = response.error;
+                content.appendChild(error);
+                return;
+            }
+
+            const list = response.subadmins || [];
+
+            if (!list.length) {
+                const empty = document.createElement("div");
+                empty.className = "card";
+                empty.textContent = "No approved sub-admins yet.";
+                content.appendChild(empty);
+                return;
+            }
+
+            list.forEach(function (admin, index) {
+                const card = document.createElement("div");
+                card.className = "card";
+
+                const title = document.createElement("h2");
+                title.textContent = admin.email;
+                card.appendChild(title);
+
+                const status = document.createElement("p");
+                status.className = "muted";
+                status.textContent = "Status: " + admin.status;
+                card.appendChild(status);
+
+                permissions.forEach(function (item) {
+                    const label = document.createElement("label");
+                    label.className = "check";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.dataset.index = String(index);
+                    checkbox.dataset.permission = item[0];
+                    checkbox.checked = (admin.permissions || []).includes(item[0]);
+
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(" " + item[1]));
+                    card.appendChild(label);
+                });
+
+                const save = document.createElement("button");
+                save.textContent = "Save permissions";
+                save.onclick = async function () {
+                    const selected = Array.from(card.querySelectorAll("input[type=checkbox]:checked"))
+                        .map(function (checkbox) { return checkbox.dataset.permission; });
+                    const result = await api("/api/admin/subadmins/permissions", "POST", {
+                        email: admin.email,
+                        permissions: selected
+                    });
+                    alert(result.ok ? "Saved" : (result.error || "Could not save permissions."));
+                };
+                card.appendChild(save);
+                content.appendChild(card);
+            });
+        }
+
+        loadSubAdmins();
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#25272a">
+    <link rel="stylesheet" href="/style.css">
+    <title>Memberships · ClearSky 5.0</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/home.html"><span class="brand-mark">CS</span><span data-brand>ClearSky</span><span class="brand-version">5.0</span></a>
+            <span class="muted">Memberships</span>
+        </header>
+
+        <section class="hero">
+            <span class="pill">NGN ONLY</span>
+            <h1>Choose your plan.</h1>
+            <p class="muted">Browse plans freely. Sign in or log in when you want to purchase or apply.</p>
+            <div class="card">5% first-purchase discount for new users.</div>
+        </section>
+
+        <div class="row">
+            <button id="monthlyButton">Monthly</button>
+            <button id="yearlyButton" class="secondary">Yearly</button>
+        </div>
+
+        <div id="plans" class="grid"></div>
+
+        <div class="card">
+            <span class="pill">INVITE ONLY</span>
+            <h2>Premium</h2>
+            <p>Premium is invitation-only and includes watermark removal.</p>
+            <button id="premiumButton">Apply for Premium</button>
+            <p id="premiumMessage" class="muted"></p>
+        </div>
+
+        <div class="card">
+            <h2>Sub-admin access</h2>
+            <p>Paid sub-admin applications cost ₦10,000. The owner must approve the successful application before the role is granted.</p>
+            <button id="subadminButton">Apply for Sub-admin · ₦10,000</button>
+            <p id="subadminMessage" class="muted"></p>
+        </div>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        let cycle = "monthly";
+
+        function requireAccount(message) {
+            if (isLoggedIn()) return true;
+            showLoginRequired("plans", message || "Sign in or log in before purchasing or applying.");
+            return false;
+        }
+
+        async function drawPlans() {
+            const response = await api("/api/plans");
+            const plans = response.plans || [];
+            const container = document.getElementById("plans");
+            container.innerHTML = "";
+
+            plans.filter(function (plan) { return plan.name !== "Premium"; }).forEach(function (plan) {
+                const card = document.createElement("div");
+                card.className = "card plan-card";
+                const price = cycle === "yearly" ? plan.naira * 12 : plan.naira;
+                card.innerHTML = "<span class=\"pill\">" + esc(plan.name) + "</span><div class=\"price\">₦" + Number(price).toLocaleString() + "</div><p>" + (cycle === "yearly" ? "per year" : "per month") + "</p><p>Watermark removal included.</p>";
+                const button = document.createElement("button");
+                button.textContent = "Choose " + plan.name;
+                button.onclick = async function () {
+                    if (!requireAccount("Sign in or log in before purchasing a membership.")) return;
+                    const result = await api("/api/pay", "POST", { plan: plan.name, cycle: cycle });
+                    if (result.url) {
+                        alert(result.discount ? "Your 5% first-purchase discount is applied. Pay ₦" + Number(result.amount).toLocaleString() + "." : "Pay ₦" + Number(result.amount).toLocaleString() + ".");
+                        location = result.url;
+                    } else {
+                        alert(result.error || "Payment unavailable.");
+                    }
+                };
+                card.appendChild(button);
+                container.appendChild(card);
+            });
+        }
+
+        document.getElementById("monthlyButton").onclick = function () {
+            cycle = "monthly";
+            drawPlans();
+        };
+
+        document.getElementById("yearlyButton").onclick = function () {
+            cycle = "yearly";
+            drawPlans();
+        };
+
+        document.getElementById("premiumButton").onclick = async function () {
+            if (!requireAccount("Sign in or log in before applying for Premium.")) return;
+            const result = await api("/api/premium/apply", "POST", {});
+            document.getElementById("premiumMessage").textContent = result.ok ? "Application sent to the owner." : (result.error || "Application failed.");
+        };
+
+        document.getElementById("subadminButton").onclick = async function () {
+            if (!requireAccount("Sign in or log in before applying for sub-admin access.")) return;
+            const result = await api("/api/subadmin/apply", "POST", {});
+            if (result.url) location = result.url;
+            else document.getElementById("subadminMessage").textContent = result.error || "Unable to start application.";
+        };
+
+        drawPlans();
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

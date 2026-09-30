@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#25272a">
+    <link rel="stylesheet" href="/style.css">
+    <title>AI Beats Generator · ClearSky 5.0</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/home.html"><span class="brand-mark">CS</span><span data-brand>ClearSky</span><span class="brand-version">5.0</span></a>
+            <span class="muted">AI Beats</span>
+        </header>
+
+        <section class="hero">
+            <span class="pill">MEMBERSHIP TOOL</span>
+            <h1>AI Beats Generator</h1>
+            <p class="muted">Describe the beat you want. Membership is required for normal users. Admins and approved sub-admins can use the tool free.</p>
+        </section>
+
+        <div id="beatWorkspace">
+            <div class="card">
+                <label for="beatPrompt">Describe your beat</label>
+                <textarea id="beatPrompt" rows="8" placeholder="Example: dark hip-hop beat, punchy kick, crisp snare, jazzy chords, 96 BPM"></textarea>
+                <button id="generateBeat">Generate beat</button>
+                <div id="beatStatus" class="muted" style="margin-top:12px"></div>
+                <div id="beatOutput" class="result"></div>
+            </div>
+
+            <div class="card">
+                <h3>Membership required</h3>
+                <p class="muted">AI Beats is available to Bronze, Silver, Gold, Platinum and Premium members.</p>
+                <a class="secondary primary" href="/membership.html">View membership plans</a>
+            </div>
+        </div>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        document.getElementById("generateBeat").onclick = async function () {
+            const output = document.getElementById("beatOutput");
+            const status = document.getElementById("beatStatus");
+            const prompt = document.getElementById("beatPrompt").value.trim();
+
+            if (!isLoggedIn()) {
+                showLoginRequired(output, "Sign in or log in before generating a beat.");
+                return;
+            }
+
+            if (!prompt) {
+                status.textContent = "Describe the beat first.";
+                return;
+            }
+
+            status.textContent = "Generating beat…";
+            output.textContent = "";
+
+            const result = await api("/api/ai/beats", "POST", { prompt: prompt });
+
+            if (result.loginRequired) {
+                showLoginRequired(output, "Your session is not active. Please log in again.");
+                status.textContent = "";
+                return;
+            }
+
+            if (result.error) {
+                status.textContent = result.error;
+                if (/membership|unavailable/i.test(result.error)) {
+                    output.innerHTML = "<a class=\"primary\" href=\"/membership.html\">Choose a membership</a>";
+                }
+                return;
+            }
+
+            status.textContent = "Beat generated.";
+            if (result.pattern) {
+                const pre = document.createElement("pre");
+                pre.textContent = JSON.stringify(result.pattern, null, 2);
+                output.appendChild(pre);
+            }
+
+            if (result.audio) {
+                const audio = document.createElement("audio");
+                audio.controls = true;
+                audio.style.width = "100%";
+                audio.style.marginTop = "12px";
+                audio.src = result.audio;
+                output.appendChild(audio);
+            }
+        };
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

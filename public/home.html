@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#25272a">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/style.css">
+    <title>ClearSky 5.0 · Dashboard</title>
+</head>
+<body>
+    <main class="page">
+        <header class="top">
+            <a class="brand" href="/home.html">
+                <span class="brand-mark">CS</span>
+                <span data-brand>ClearSky</span>
+                <span class="brand-version">5.0</span>
+            </a>
+            <span class="muted">Dashboard</span>
+        </header>
+
+        <section class="hero">
+            <div class="dashboard-banner">
+                <span class="pill">CLEARSKY 5.0</span>
+                <h1 id="homeTitle">Your creative workspace.</h1>
+                <p id="homeDescription" class="muted">Create websites, logos, flyers, apps, games, photo projects, beats and AI-powered projects from one polished dashboard.</p>
+                <div class="auth-choice">
+                    <a class="primary" href="/tools.html">Explore tools</a>
+                    <a class="secondary primary" id="dashboardAuth" href="/login.html">Log in</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboardStatus" class="card">
+            <h2>Welcome to ClearSky</h2>
+            <p class="muted">You can explore the dashboard without an account. Sign in or log in when you are ready to generate.</p>
+        </section>
+
+        <h2>Quick tools</h2>
+        <div id="quickTools" class="grid">
+            <a class="tool" href="/tool.html?t=website"><span class="icon">▣</span><b>Website</b><span>Build a complete website concept.</span><small class="tool-badge">FREE TOOL</small></a>
+            <a class="tool" href="/tool.html?t=logo"><span class="icon">✦</span><b>Logo</b><span>Create a polished brand concept.</span><small class="tool-badge">FREE TOOL</small></a>
+            <a class="tool" href="/tool.html?t=flyer"><span class="icon">▤</span><b>Flyer</b><span>Create promotional artwork and copy.</span><small class="tool-badge">FREE TOOL</small></a>
+            <a class="tool" href="/tool.html?t=ai-maker"><span class="icon">✺</span><b>AI Maker</b><span>Create AI-powered ideas, workflows and digital concepts.</span><small class="tool-badge">MEMBERSHIP</small></a>
+            <a class="tool" href="/tools.html"><span class="icon">▦</span><b>All tools</b><span>Open the full ClearSky creative studio.</span><small class="tool-badge">EXPLORE</small></a>
+        </div>
+
+        <footer class="legal-links">
+            <a href="/privacy.html">Privacy Policy</a>
+            <a href="/terms.html">Terms &amp; Conditions</a>
+        </footer>
+    </main>
+
+    <div id="navbar-container"></div>
+    <script src="/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const status = document.getElementById("dashboardStatus");
+            const auth = document.getElementById("dashboardAuth");
+
+            if (!localStorage.cs_token) return;
+
+            const result = await api("/api/me");
+
+            if (!result.user) {
+                localStorage.removeItem("cs_token");
+                return;
+            }
+
+            const user = result.user;
+            status.innerHTML = "";
+
+            const title = document.createElement("h2");
+            title.textContent = "Welcome back, " + (user.nickname || "User") + ".";
+
+            const text = document.createElement("p");
+            text.className = "muted";
+            text.textContent = "Plan: " + (user.plan || "Free") + " · Account ready for ClearSky generation.";
+
+            status.appendChild(title);
+            status.appendChild(text);
+
+            auth.href = "/profile.html";
+            auth.textContent = "Open profile";
+        });
+    </script>
+    <script src="/js/navbar.js"></script>
+</body>
+</html>

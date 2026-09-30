@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#25272a"><link rel="stylesheet" href="/style.css"><title>Sub-admin Dashboard · ClearSky 5.0</title></head>
+<body><main class="page">
+<header class="top"><a class="brand" href="/home.html"><span class="brand-mark">CS</span><span data-brand>ClearSky</span><span class="brand-version">5.0</span></a><span class="muted">Sub-admin dashboard</span></header>
+<section class="hero"><span class="pill">SUB-ADMIN</span><h1>Your ClearSky workspace.</h1><p class="muted">You have free access to ClearSky tools. The owner controls which administrative editing areas are available to you.</p></section>
+<div id="identity" class="card"></div>
+<div class="card"><h2>Editable ClearSky settings</h2><p id="permissionNote" class="muted"></p><form id="settingsForm"><label>Brand name<input id="brandName"></label><label>Home title<input id="homeTitle"></label><label>Home description<textarea id="homeDescription"></textarea></label><label>Home button<input id="homeButton"></label><label>Announcement<textarea id="announcement"></textarea></label><label>FAQ / support<textarea id="faqText"></textarea></label><label>Tool order<input id="toolOrder"></label><button id="saveButton">Save permitted changes</button></form><p id="message" class="muted"></p></div>
+<div class="row"><a class="primary" href="/tools.html">Open all tools</a><a class="primary" href="/profile.html">Account profile</a></div>
+<div id="optionalPanels"></div>
+</main><div id="navbar-container"></div>
+<script src="/app.js"></script><script>
+document.addEventListener("DOMContentLoaded",async function(){
+ const me=await api("/api/me"); if(me.user?.role!=="subadmin"){document.querySelector("main").innerHTML='<div class="card"><h1>Sub-admin access required</h1><a class="primary" href="/home.html">Return home</a></div>';return;}
+ document.getElementById("identity").innerHTML='<h2>Signed in</h2><p class="muted">'+esc(me.user.email||"")+'</p><p>Role: <b>Sub-admin</b></p>';
+ const perms=await api("/api/subadmin/permissions"); const allowed=new Set(perms.permissions||[]);
+ const map={edit_home:["brandName","homeTitle","homeDescription","homeButton"],edit_tools:["toolOrder"],edit_announcements:["announcement"],edit_faq:["faqText"]};
+ Object.entries(map).forEach(function([perm,ids]){ids.forEach(id=>{const el=document.getElementById(id);if(!allowed.has(perm)){el.disabled=true;el.closest("label").style.opacity=".5";}})});
+ document.getElementById("permissionNote").textContent=allowed.size?"Enabled permissions: "+Array.from(allowed).join(", "):"No editing permissions are currently enabled by the owner.";
+ const set=await api("/api/subadmin/settings"); Object.entries(set.settings||{}).forEach(function([k,v]){const el=document.getElementById(k);if(el)el.value=v;});
+ document.getElementById("settingsForm").onsubmit=async function(e){e.preventDefault();const b={};Object.values(map).flat().forEach(id=>b[id]=document.getElementById(id).value);const r=await api("/api/subadmin/settings","POST",b);document.getElementById("message").textContent=r.ok?"Permitted changes saved.":(r.error||"Could not save.");};
+ const panels=document.getElementById("optionalPanels");
+ if(allowed.has("view_users")){const r=await api("/api/subadmin/users");const c=document.createElement("div");c.className="card";c.innerHTML="<h2>Users</h2>"+(r.users||[]).slice(0,50).map(u=>'<div class="list">'+esc(u.nickname)+' · '+esc(u.email)+' · '+esc(u.plan)+'</div>').join("");panels.appendChild(c);}
+ if(allowed.has("review_premium")){const r=await api("/api/subadmin/premium");const c=document.createElement("div");c.className="card";c.innerHTML="<h2>Premium applications</h2>"+(r.applications||[]).map(a=>'<div class="list">'+esc(a.email)+' · '+esc(a.status)+'</div>').join("");panels.appendChild(c);}
+});
+</script><script src="/js/navbar.js"></script></body></html>
